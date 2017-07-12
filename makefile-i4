@@ -1,0 +1,72 @@
+# Define variables
+FC =ifort
+TAG =main.out
+MODULE :=constants.o cycleUtility.o hamiltonian.o eigen.o spectrumUtility.o
+OTHERS :=
+ARPACK :=dmout.o dvout.o ivout.o second_NONE.o zgetv0.o zmout.o znaitr.o znapps.o znaup2.o znaupd.o zneigh.o zneupd.o zngets.o zsortc.o zstatn.o zvout.o
+MAIN :=main.o
+MODULE := $(addprefix obj/, $(MODULE))
+OTHERS := $(addprefix obj/, $(OTHERS))
+ARPACK := $(addprefix obj/, $(ARPACK))
+MAIN   := $(addprefix obj/, $(MAIN))
+DEP_FILE=makefile.dep
+MAKEDEPEND=fort_depend.py
+
+#OPTIMIZE=-parallel -par-threshold60 -fast
+#OPTIMIZE=-parallel -par-threshold60 -ipo -O3 -no-prec-div -static -fp-model fast=2 -xHost
+#OPTIMIZE=-parallel -par-threshold60 -ipo -O3 -no-prec-div -fp-model fast=2 -xHost
+#OPTIMIZE=-parallel -par-threshold60 -ipo -O3 -fp-model precise -xHost
+OPTIMIZE=-parallel -par-threshold60 -O3 -xHost
+#OPTIMIZE=-parallel -par-threshold60
+#OPTIMIZE=
+#DIAGNOSE=-warn all -check all -traceback
+#DIAGNOSE=-warn all -check arg_temp_created
+#DIAGNOSE=-warn all
+DIAGNOSE=
+INCLUDE  =-I${MKLROOT}/include/intel64/lp64 -I${MKLROOT}/include
+BLAS95   =${MKLROOT}/lib/intel64/libmkl_blas95_lp64.a
+LAPACK95 =${MKLROOT}/lib/intel64/libmkl_lapack95_lp64.a
+MKL_CORE =-Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a \
+                            ${MKLROOT}/lib/intel64/libmkl_intel_thread.a \
+                            ${MKLROOT}/lib/intel64/libmkl_core.a \
+          -Wl,--end-group \
+          -liomp5 -lpthread -lm -ldl
+
+F90FLAGS=$(OPTIMIZE) $(DIAGNOSE) -stand -module mod $(INCLUDE)
+F77FLAGS=$(OPTIMIZE) $(DIAGNOSE) -warn nounused -warn nointerfaces -nogen-interfaces
+LinkLine=$(OPTIMIZE) $(DIAGNOSE) $(BLAS95) $(LAPACK95) $(MKL_CORE)
+
+all: $(DEP_FILE) $(TAG)
+run: $(DEP_FILE) $(TAG)
+	./$(TAG)
+depend: $(DEP_FILE)
+
+# Linking
+$(TAG): $(MODULE) $(ARPACK) $(OTHERS) $(MAIN)
+	$(FC)       $^ $(LinkLine) -o $@
+
+# Compiling
+obj/%.o: arpack/%.f arpack/debug.h arpack/stat.h obj
+	$(FC)    -c $< $(F77FLAGS) -o $@
+
+obj/%.o: %.f90 obj mod
+	$(FC)    -c $< $(F90FLAGS) -o $@
+
+obj:
+	mkdir obj
+
+mod:
+	mkdir mod
+
+# Generate dependencies
+$(DEP_FILE): $(wildcard *.f90 *.F90)
+	@echo "Making dependencies!"
+	python $(MAKEDEPEND) -w -o $(DEP_FILE) -f $(wildcard *.f90 *.F90)
+
+# Commands
+clean:
+	rm -f $(TAG) *.o *.mod *__genmod*
+	rm -rf obj mod
+.PHONY: clean all run depend
+
+include $(DEP_FILE)
