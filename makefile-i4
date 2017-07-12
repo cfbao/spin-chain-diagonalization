@@ -43,25 +43,25 @@ depend: $(DEP_FILE)
 
 # Linking
 $(TAG): $(MODULE) $(ARPACK) $(OTHERS) $(MAIN)
-	$(FC)       $^ $(LinkLine) -o $@
+	@echo Linking...
+	@$(FC)    $^ $(LinkLine) -o $@
+	@echo build complete
 
 # Compiling
-obj/%.o: arpack/%.f arpack/debug.h arpack/stat.h obj
-	$(FC)    -c $< $(F77FLAGS) -o $@
+obj/%.o: arpack/%.f arpack/debug.h arpack/stat.h
+	@echo compiling $<
+	@mkdir -p obj
+	@$(FC) -c $< $(F77FLAGS) -o $@
 
-obj/%.o: %.f90 obj mod
-	$(FC)    -c $< $(F90FLAGS) -o $@
-
-obj:
-	mkdir obj
-
-mod:
-	mkdir mod
+obj/%.o: %.f90
+	@echo compiling $<
+	@mkdir -p obj mod
+	@$(FC) -c $< $(F90FLAGS) -o $@
 
 # Generate dependencies
-$(DEP_FILE): $(wildcard *.f90 *.F90)
+$(DEP_FILE): $(wildcard *.f90 *.F90) $(MAKEDEPEND)
 	@echo "Making dependencies!"
-	python $(MAKEDEPEND) -w -o $(DEP_FILE) -f $(wildcard *.f90 *.F90)
+	@python $(MAKEDEPEND) -w -b obj -o $(DEP_FILE) -f $(wildcard *.f90 *.F90)
 
 # Commands
 clean:
