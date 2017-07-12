@@ -25,8 +25,6 @@ contains
 !           become the representative of equivalent configurations
 ! HROWT:    Temporary row index
 ! HCOLUMNT: Temporary column index
-! NCONFIG:  Number of spin configurations mod translations
-!           i.e. dimension of the Hamiltonian
 ! NTERM:    Number of basis vectors involved after applying the Hamiltonian on
 !           a basis vector. Roughly equals the number of nonzero matrix 
 !           elements in a column. Usually of the same order as NSITE.
@@ -47,8 +45,8 @@ contains
 ! ============================================================================
 subroutine constructH(Hvalue, Hrow, Hpntrb, Hpntre, nterm, k, g)
     use constants
-    use cycleUtility, only: get_rep, get_index_k, get_alpha, mod1, &
-                            config, period, nbp, nsite
+    use necklaces, only: get_alpha, get_index_x, mod1, &
+                         nbp, nsite, norbits, reps, period, kidx, dis2rep
     ! =========
     ! PARAMETER
     ! =========
@@ -63,15 +61,14 @@ subroutine constructH(Hvalue, Hrow, Hpntrb, Hpntre, nterm, k, g)
     ! ===============
     ! LOCAL VARIABLES
     ! ===============
-    integer Hrowt, Hcolumnt, nHele, nconfig
+    integer Hrowt, Hcolumnt, nHele
     complex(8) Hvaluet
     complex(8),allocatable :: Halpha(:)
     integer s1, s2, overlap
     integer alpha(nsite), alpha2(nsite)
     integer,allocatable :: dis(:), rowind(:)
     
-    nconfig = size(config)
-    if( size(Hpntrb)/=nconfig .or. size(Hpntre)/=nconfig .or. size(Hvalue)/=size(Hrow) ) &
+    if( size(Hpntrb)/=norbits .or. size(Hpntre)/=norbits .or. size(Hvalue)/=size(Hrow) ) &
         error stop 'Error: inconsistent dimensions in HAMILTONIAN.CONSTRUCTH'
     allocate( Halpha(nterm), dis(nterm), rowind(nterm) )
     ! ===========================================
@@ -84,9 +81,9 @@ subroutine constructH(Hvalue, Hrow, Hpntrb, Hpntre, nterm, k, g)
     !     i.e. different column indices
     ! ===========================================
     nHele = 1
-    column_loop: do Hcolumnt = 1, nconfig
+    column_loop: do Hcolumnt = 1, norbits
         Hpntrb(Hcolumnt) = nHele
-        call get_alpha(config(Hcolumnt), alpha)
+        call get_alpha(reps(Hcolumnt), alpha)
         ! ====================================
         ! Loop over all terms in Hamiltonian
         ! constructing states in H*ALPHA
@@ -107,8 +104,8 @@ subroutine constructH(Hvalue, Hrow, Hpntrb, Hpntre, nterm, k, g)
                     Halpha(nterm) = Halpha(nterm) + (-1)**alpha(s2)
                 enddo
             end if
-            call get_rep(alpha2, dis(s1))
-            rowind(s1) = get_index_k(alpha2)
+            rowind(s1) = kidx(get_index_x(alpha2))
+            dis(s1) = dis2rep(get_index_x(alpha2))
         enddo
         call sortHa( rowind, dis, Halpha )
         

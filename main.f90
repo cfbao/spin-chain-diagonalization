@@ -50,7 +50,7 @@
 ! ===================================================================================
 ! Main variables
 ! -----------------------------------------------------------------------------------
-! I,K,N:        Counters and occational usage
+! I,K:          Counters and occational usage
 !               K reserved for crystal momentum
 ! NCONFIG:      Number of spin configurations (mod translations) 
 !                     ~ 2**(2*NBP)/NBP
@@ -70,7 +70,7 @@
 ! -----------------------------------------------------------------------------------
 ! Large arrays (ones that may concern memory usage)
 ! -----------------------------------------------------------------------------------
-! Arrays of size of NCONFIG (in module cycleUtility):
+! Arrays of size of NCONFIG (in module necklaces):
 !    CONFIG:       store all (indices of) configurations mod translations 
 !                  (i.e. a representative of each config.)
 !    PERIOD:       Store the period of each spin configurations
@@ -118,7 +118,7 @@
 
 program main
     use constants, only: tabchar
-    use cycleUtility, only: find_cycles, config
+    use necklaces, only: find_orbits, count_necklaces, norbits
     use Hamiltonian, only: constructH
     use eigen, only: eig
     use spectrumUtility, only: sort_eigval, write_eigval_k
@@ -129,7 +129,7 @@ program main
     integer,parameter :: nbp = 15, lbp = 1, nsite = lbp * nbp
     integer,parameter :: d = 2, nterm = nsite+1
     integer,parameter :: nev = 10, ncv = min(d**nsite, max(3*nev, 20))
-    real(8),parameter :: g = -0.0_8, memmax = 1
+    real(8),parameter :: g = -0.0_8, memmax = 1024**3
     
     ! ===================
     ! Constant parameters
@@ -147,9 +147,9 @@ program main
     ! ===============
     real(8) timer(5), start(5), finish(5), dsecnd
     
-    integer i, k, n, nconfig
+    integer i, k, nelem
     integer filspec, filconvK, filresiK, filerr, filtime
-    real(8) nconfig_est, mem, gs
+    real(8) mem, gs
     
     ! ==================
     ! Allocatable arrays
@@ -164,12 +164,16 @@ program main
     ! Pre-run checking: estimate array size & RAM usage
     ! If estimation exceeds capability, exit program.
     ! =================================================
-    nconfig_est = (1.0_8*d)**nsite / nbp + (1.0_8*d)**(nsite/2) / nbp * 2 + 2
-    mem = nconfig_est * ( 16*((nterm+1)/2.0_8 + ncv + 8) + 8*((nterm+1)/2.0_8 + 4) ) / 1000**3
+    norbits = count_necklaces(nbp, d**lbp)
+    nelem = nint(norbits*(nterm+1)/2.0_8)           ! number of matrix elements for a Hermitian Hamiltonian
+    mem = 16.0_8 * (nelem + norbits*ncv + ncv) &    ! COMPLEX: Hvalue, eigenvector, eigenvalue
+        + 8.0_8 * nev * (nbp + nbp/2+1 + nbp+1) &   ! REAL: spectrumAll, spectrumRaw, spectrumK
+        + storage_size(i)/8.0_8 * &                 ! INTEGER:
+         (nelem + 4*norbits + 2*d**nsite)           !   Hrow, Hpntrb, Hpntre, 4 arrays in module NECKLACES
     if( mem > memmax ) then
         open( newunit = filerr, file='not_enough_RAM.txt',action='write')
-        write(filerr, '(A,1pG10.3,A)') 'Estimated memory usage :', mem,    ' GB'
-        write(filerr, '(A,1pG10.3,A)') 'Available memory       :', memmax, ' GB'
+        write(filerr, '(A,1pG10.3,A)') 'Estimated memory usage :', mem,    ' Bytes'
+        write(filerr, '(A,1pG10.3,A)') 'Available memory       :', memmax, ' Bytes'
         close(filerr)
         error stop 'Error: insufficient memory. See error file.'
     endif
@@ -181,17 +185,10 @@ program main
     start(5) = dsecnd()
     
     ! ===================================================
-    ! Preparation for constructing Hamiltonian.
-    ! Relate spin position basis to momentum basis.
-    ! Find explicitly all "cycles"#
-    ! # "cycle" = spin configuration modulo translation
-    ! ---------------------------------------------------
-    ! 1. Count number of cycles, store in NCONFIG
-    ! 2. Find indices/periods of representative of cycles
-    !    store them in array CONFIG/PERIOD
+    ! initialize module necklaces
     ! ===================================================
     start(1) = dsecnd()
-    call find_cycles(nbp, lbp, d)
+    call find_orbits(nbp, lbp, d)
     finish(1) = dsecnd()
     timer(1) = timer(1) + ( finish(1) - start(1) )
     
@@ -204,8 +201,6 @@ program main
     !    1. spectrum-K.txt
     !    2. convergence-K.txt
     !    3. residuals-K.txt
-    ! One counter active: 
-    !    N: # of total energy levels 
     ! ===================================
     open( newunit=filspec,  file='spectrum.txt',      action='write')
     open( newunit=filconvK, file='convergence-K.txt', action='write')
@@ -214,9 +209,7 @@ program main
     write(filspec, '(F7.4,A,I0,A,I0)') g,  tabchar,  nbp,  tabchar,  nsite
     write(filspec, '(A)')
     
-    nconfig = size(config)
-    n = nint(nconfig*(nterm+1)/2.0_8)
-    allocate( Hvalue(n), Hrow(n), Hpntrb(nconfig), Hpntre(nconfig) )
+    allocate( Hvalue(nelem), Hrow(nelem), Hpntrb(norbits), Hpntre(norbits) )
     allocate( spectrumRaw(nev, 0:nbp/2) )
     main_loop: do k = 0, nBp/2
         ! =====================
@@ -236,7 +229,7 @@ program main
         write(*, '(A,I0)') 'solving eigenvalue problem k = ', k
         write(filconvK, '(A,I0)') 'k = ', k
         write(filresiK, '(A,I0)') 'k = ', k
-        allocate( eigenvalue(ncv), eigenvector(nconfig, ncv) )
+        allocate( eigenvalue(ncv), eigenvector(norbits, ncv) )
         call eig(Hvalue, Hrow, Hpntrb, Hpntre, nev, eigenvalue, eigenvector, &
                     value_vector, filconvK, filresiK)
         finish(3) = dsecnd()
