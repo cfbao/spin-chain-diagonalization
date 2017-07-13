@@ -12,12 +12,11 @@ MAIN   := $(addprefix obj/, $(MAIN))
 DEP_FILE=makefile.dep
 MAKEDEPEND=fort_depend.py
 
-#OPTIMIZE=-parallel -par-threshold60 -fast
-#OPTIMIZE=-parallel -par-threshold60 -ipo -O3 -no-prec-div -static -fp-model fast=2 -xHost
-#OPTIMIZE=-parallel -par-threshold60 -ipo -O3 -no-prec-div -fp-model fast=2 -xHost
-#OPTIMIZE=-parallel -par-threshold60 -ipo -O3 -fp-model precise -xHost
-OPTIMIZE=-parallel -par-threshold60 -O3 -xHost
-#OPTIMIZE=-parallel -par-threshold60
+#OPTIMIZE=-fast
+#OPTIMIZE=-ipo -O3 -no-prec-div -static -fp-model fast=2 -xHost
+#OPTIMIZE=-ipo -O3 -no-prec-div -fp-model fast=2 -xHost
+#OPTIMIZE=-ipo -O3 -fp-model precise -xHost
+OPTIMIZE=-O3 -xHost
 #OPTIMIZE=
 #DIAGNOSE=-warn all -check all -traceback
 #DIAGNOSE=-warn all -check arg_temp_created
