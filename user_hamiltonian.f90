@@ -1,6 +1,6 @@
 module user_hamiltonian
     use necklaces, only: mod1
-    use user_parameters, only: nbp, lbp, nsite, d, nterm, g
+    use user_parameters, only: ncell, lcell, nsite, d, nterm, g
     implicit none
 contains
 
@@ -10,7 +10,9 @@ pure subroutine h_term_action(alpha_in, s, alpha_out, coeff)
     integer,intent(out) :: alpha_out(:)     ! output state, size = NSITE
     complex(8),intent(out) :: coeff         ! coefficient of output state
 
-! =========== MODIFY BELOW THIS LINE ===========
+! ======================================================================
+! ======================= MODIFY BELOW THIS LINE =======================
+! ======================================================================
 ! Example: transverse Ising model
 !           H = - sum_i X_i X_i+1 + sum_i Z_i
     integer t
@@ -28,6 +30,8 @@ pure subroutine h_term_action(alpha_in, s, alpha_out, coeff)
             coeff = coeff + (-1)**alpha_in(t)
         enddo
     end if
-! =========== MODIFY ABOVE THIS LINE ===========
+! ======================================================================
+! ======================= MODIFY BELOW THIS LINE =======================
+! ======================================================================
 end subroutine h_term_action
 end module user_hamiltonian

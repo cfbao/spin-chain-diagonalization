@@ -1,5 +1,5 @@
 module necklaces
-    use user_parameters, only: d, nbp, lbp, nsite
+    use user_parameters, only: d, ncell, lcell, nsite
     implicit none
     integer norbits
     integer, allocatable :: reps(:)         ! input index_k output index_x of rep
@@ -16,10 +16,10 @@ contains
 ! This subroutine should be called only once as initialization
 ! ============================================================
 subroutine find_orbits()
-    integer alpha(nbp*lbp)
+    integer alpha(ncell*lcell)
     integer iX, iXt, iK, i
     
-    norbits = count_necklaces(nbp, d**lbp)
+    norbits = count_necklaces(ncell, d**lcell)
     allocate( reps(norbits), period(norbits), kidx(d**nsite), dis2rep(d**nsite) )
     kidx = 0
     
@@ -74,7 +74,7 @@ end subroutine get_alpha
 
 ! ==========================================
 ! Translate ALPHA by one unit cell
-! Def: Translation: alpha(i+LBP) -> alpha(i)
+! Def: Translation: alpha(i+lcell) -> alpha(i)
 ! ==========================================
 pure subroutine rotate(alpha)
     integer,intent(inout) :: alpha(:)
@@ -82,7 +82,7 @@ pure subroutine rotate(alpha)
     integer original(nsite)
     original = alpha
     do i = 1, nsite
-        alpha(i) = original( mod1(i+lbp, nsite) )
+        alpha(i) = original( mod1(i+lcell, nsite) )
     enddo
 end subroutine
 
@@ -147,7 +147,7 @@ pure function get_period(alpha) result(period)
     period = 1
     do
         do i = 1, nsite
-            j = mod1( i + lbp*period, nsite )
+            j = mod1( i + lcell*period, nsite )
             if( alpha(i)/=alpha(j) ) exit
         enddo
         if( i > nsite ) return

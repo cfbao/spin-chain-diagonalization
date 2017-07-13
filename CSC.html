@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body>
+<div class="book-page-content  hasFirstSidebar">
+<header>
+    <h1 class="page__title title" id="page-title" style="display: block;">
+    Sparse BLAS CSC Matrix Storage Format
+    </h1>
+    <p><i>Original page at
+    <a href="https://software.intel.com/en-us/mkl-developer-reference-fortran-sparse-blas-csc-matrix-storage-format" target="_blank">MKL References - Sparse BLAS CSC Matrix Storage Format</a></i>
+    </p>
+</header>
+<div class="field field-name-body field-type-text-with-summary field-label-hidden">
+<div class="field-items">
+<div class="field-item even" property="content:encoded">
+<div class="topic-wrapper">
+<div>
+<p>The compressed sparse column format (CSC) is similar to the CSR format, but the columns are used instead the rows.
+In other words, the CSC format is identical to the CSR format for the transposed matrix.
+The CSR format is specified by four arrays: <var>values</var>, <var>columns</var>, <var>pointerB</var>, and <var>pointerE</var>.
+The following table describes the arrays in terms of the values, row, and column positions of the non-zero elements in a sparse matrix <var>A</var>.</p>
+<dl class="dlhorizontal"><dt class="dlterm"><var>values</var></dt>
+<dd>
+<p>A real or complex array that contains the non-zero elements of <var>A</var>. 
+Values of the non-zero elements of <var>A</var> are mapped into the <var>values</var> array using the column-major storage mapping.</p>
+</dd>
+<dt class="dlterm"><var>rows</var></dt>
+<dd>
+<p>Element <var>i</var> of the integer array <var>rows</var> is the number of the row in <var>A</var> that contains the <var>i</var>-th value in the <var>values</var> array.</p>
+</dd>
+<dt class="dlterm"><var>pointerB</var></dt>
+<dd>
+<p>Element <var>j</var> of this integer array gives the index of the element in the <var>values</var> array 
+that is first non-zero element in a column <var>j</var> of <var>A</var>.
+Note that this index is equal to <samp class="codeph"><var>pointerB</var>(<var>j</var>) - <var>pointerB</var>(1)+1</samp> .</p>
+</dd>
+<dt class="dlterm"><var>pointerE</var></dt>
+<dd>
+<p>An integer array that contains column indices, such that <samp class="codeph"><var>pointerE</var>(<var>j</var>)-<var>pointerB</var>(1)</samp> 
+is the index of the element in the <var>values</var> array that is last non-zero element in a column <var>j</var> of <var>A</var>.</p>
+</dd>
+</dl>
+<p>The length of the <var>values</var> and <var>columns</var> arrays is equal to the number of non-zero elements in <var>A</var>.
+The length of the <var>pointerB</var> and <var>pointerE</var> arrays is equal to the number of columns in <var>A</var>.</p>
+<p/>
+<div class="Note">
+<h3 class="NoteTipHead">Note</h3>
+<p>Note that the Intel MKL Sparse BLAS routines support the CSC format both with one-based indexing and zero-based indexing.</p>
+</div>
+<p/>
+<p>For example, consider matrix <var>B</var>:</p>
+<p><br>
+<img src="data:image/png;base64,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irTEBdc1F+ZCEr1Th4PRDuX/iA6rm/sCfA1hFWRt7aenIARH2N43mCaloRQw52Da6Ot4wBpy1BKWiANwNeG+nIf1T9DH565UWR5Hc2D1a7op2PVowevEHvTZiyUDJbs4/2u8ANHkKvTSBpyCAAAADnRFWHRDcmVhdGVkIEJ5AERTSdCfKSgAAAaXdEVYdE1hdGhNTAA8AG0AYQB0AGgAPgA8AG0AcgBvAHcAPgA8AG0AaQA+AEIAPAAvAG0AaQA+ADwAbQBvAD4APQA8AC8AbQBvAD4APABtAHIAbwB3AD4APABtAG8APgAoADwALwBtAG8APgA8AG0AcgBvAHcAPgA8AG0AdABhAGIAbABlAD4APABtAHQAcgA+ADwAbQB0AGQAPgA8AG0AbgA+ADEAPAAvAG0AbgA+ADwALwBtAHQAZAA+ADwAbQB0AGQAPgA8AG0AcgBvAHcAPgA8AG0AbwA+ACYAIwB4ADIAMgAxADIAOwA8AC8AbQBvAD4APABtAG4APgAxADwALwBtAG4APgA8AC8AbQByAG8AdwA+ADwALwBtAHQAZAA+ADwAbQB0AGQAPgA8AG0AbwA+ACoAPAAvAG0AbwA+ADwALwBtAHQAZAA+ADwAbQB0AGQAPgA8AG0AcgBvAHcAPgA8AG0AbwA+ACYAIwB4ADIAMgAxADIAOwA8AC8AbQBvAD4APABtAG4APgAzADwALwBtAG4APgA8AC8AbQByAG8AdwA+ADwALwBtAHQAZAA+ADwAbQB0AGQAPgA8AG0AbwA+ACoAPAAvAG0AbwA+ADwALwBtAHQAZAA+ADwALwBtAHQAcgA+ADwAbQB0AHIAPgA8AG0AdABkAD4APABtAHIAbwB3AD4APABtAG8APgAmACMAeAAyADIAMQAyADsAPAAvAG0AbwA+ADwAbQBuAD4AMgA8AC8AbQBuAD4APAAvAG0AcgBvAHcAPgA8AC8AbQB0AGQAPgA8AG0AdABkAD4APABtAG4APgA1ADwALwBtAG4APgA8AC8AbQB0AGQAPgA8AG0AdABkAD4APABtAG8APgAqADwALwBtAG8APgA8AC8AbQB0AGQAPgA8AG0AdABkAD4APABtAG8APgAqADwALwBtAG8APgA8AC8AbQB0AGQAPgA8AG0AdABkAD4APABtAG8APgAqADwALwBtAG8APgA8AC8AbQB0AGQAPgA8AC8AbQB0AHIAPgA8AG0AdAByAD4APABtAHQAZAA+ADwAbQBvAD4AKgA8AC8AbQBvAD4APAAvAG0AdABkAD4APABtAHQAZAA+ADwAbQBvAD4AKgA8AC8AbQBvAD4APAAvAG0AdABkAD4APABtAHQAZAA+ADwAbQBuAD4ANAA8AC8AbQBuAD4APAAvAG0AdABkAD4APABtAHQAZAA+ADwAbQBuAD4ANgA8AC8AbQBuAD4APAAvAG0AdABkAD4APABtAHQAZAA+ADwAbQBuAD4ANAA8AC8AbQBuAD4APAAvAG0AdABkAD4APAAvAG0AdAByAD4APABtAHQAcgA+ADwAbQB0AGQAPgA8AG0AcgBvAHcAPgA8AG0AbwA+ACYAIwB4ADIAMgAxADIAOwA8AC8AbQBvAD4APABtAG4APgA0ADwALwBtAG4APgA8AC8AbQByAG8AdwA+ADwALwBtAHQAZAA+ADwAbQB0AGQAPgA8AG0AbwA+ACoAPAAvAG0AbwA+ADwALwBtAHQAZAA+ADwAbQB0AGQAPgA8AG0AbgA+ADIAPAAvAG0AbgA+ADwALwBtAHQAZAA+ADwAbQB0AGQAPgA8AG0AbgA+ADcAPAAvAG0AbgA+ADwALwBtAHQAZAA+ADwAbQB0AGQAPgA8AG0AbwA+ACoAPAAvAG0AbwA+ADwALwBtAHQAZAA+ADwALwBtAHQAcgA+ADwAbQB0AHIAPgA8AG0AdABkAD4APABtAG8APgAqADwALwBtAG8APgA8AC8AbQB0AGQAPgA8AG0AdABkAD4APABtAG4APgA4ADwALwBtAG4APgA8AC8AbQB0AGQAPgA8AG0AdABkAD4APABtAG8APgAqADwALwBtAG8APgA8AC8AbQB0AGQAPgA8AG0AdABkAD4APABtAG8APgAqADwALwBtAG8APgA8AC8AbQB0AGQAPgA8AG0AdABkAD4APABtAHIAbwB3AD4APABtAG8APgAmACMAeAAyADIAMQAyADsAPAAvAG0AbwA+ADwAbQBuAD4ANQA8AC8AbQBuAD4APAAvAG0AcgBvAHcAPgA8AC8AbQB0AGQAPgA8AC8AbQB0AHIAPgA8AC8AbQB0AGEAYgBsAGUAPgA8AC8AbQByAG8AdwA+ADwAbQBvAD4AKQA8AC8AbQBvAD4APAAvAG0AcgBvAHcAPgA8AC8AbQByAG8AdwA+ADwALwBtAGEAdABoAD4AAAA6Gz4JAAAAE3RFWHREaW1lbnNpb25zANgAAQD4/wAAYYRuDwAAAABJRU5ErkJggg==">
+<br></p>
+<p>It can be represented in the CSC format as:</p>
+<p/>
+<div class="tablenoborder">
+<table cellpadding="4" summary="" class="AllLineStandard" frame="hsides" border="1" rules="all">
+<caption><span class="tablecap">Storage Arrays for a Matrix in CSC Format</span></caption>
+<tbody>
+<tr>
+<td class="cellrowborder" colspan="2" valign="top"><strong>one-based indexing</strong></td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="row-nocellborder" valign="top" width="6%">&nbsp;</td>
+</tr>
+<tr>
+<td class="cellrowborder" valign="top" width="16%"><var>values</var></td>
+<td class="cellrowborder" valign="top" width="6%">=</td>
+<td class="cellrowborder" valign="top" width="6%">(1</td>
+<td class="cellrowborder" valign="top" width="6%">-2</td>
+<td class="cellrowborder" valign="top" width="6%">-4</td>
+<td class="cellrowborder" valign="top" width="6%">-1</td>
+<td class="cellrowborder" valign="top" width="6%">5</td>
+<td class="cellrowborder" valign="top" width="6%">8</td>
+<td class="cellrowborder" valign="top" width="6%">4</td>
+<td class="cellrowborder" valign="top" width="6%">2</td>
+<td class="cellrowborder" valign="top" width="6%">-3</td>
+<td class="cellrowborder" valign="top" width="6%">6</td>
+<td class="cellrowborder" valign="top" width="6%">7</td>
+<td class="cellrowborder" valign="top" width="6%">4</td>
+<td class="row-nocellborder" valign="top" width="6%">-5)</td>
+</tr>
+<tr>
+<td class="cellrowborder" valign="top" width="16%"><var>rows</var></td>
+<td class="cellrowborder" valign="top" width="6%">=</td>
+<td class="cellrowborder" valign="top" width="6%">(1</td>
+<td class="cellrowborder" valign="top" width="6%">2</td>
+<td class="cellrowborder" valign="top" width="6%">4</td>
+<td class="cellrowborder" valign="top" width="6%">1</td>
+<td class="cellrowborder" valign="top" width="6%">2</td>
+<td class="cellrowborder" valign="top" width="6%">5</td>
+<td class="cellrowborder" valign="top" width="6%">3</td>
+<td class="cellrowborder" valign="top" width="6%">4</td>
+<td class="cellrowborder" valign="top" width="6%">1</td>
+<td class="cellrowborder" valign="top" width="6%">3</td>
+<td class="cellrowborder" valign="top" width="6%">4</td>
+<td class="cellrowborder" valign="top" width="6%">3</td>
+<td class="row-nocellborder" valign="top" width="6%">5)</td>
+</tr>
+<tr>
+<td class="cellrowborder" valign="top" width="16%"><var>pointerB</var></td>
+<td class="cellrowborder" valign="top" width="6%">=</td>
+<td class="cellrowborder" valign="top" width="6%">(1</td>
+<td class="cellrowborder" valign="top" width="6%">4</td>
+<td class="cellrowborder" valign="top" width="6%">7</td>
+<td class="cellrowborder" valign="top" width="6%">9</td>
+<td class="cellrowborder" valign="top" width="6%">12)</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="row-nocellborder" valign="top" width="6%">&nbsp;</td>
+</tr>
+<tr>
+<td class="cellrowborder" valign="top" width="16%"><var>pointerE</var></td>
+<td class="cellrowborder" valign="top" width="6%">=</td>
+<td class="cellrowborder" valign="top" width="6%">(4</td>
+<td class="cellrowborder" valign="top" width="6%">7</td>
+<td class="cellrowborder" valign="top" width="6%">9</td>
+<td class="cellrowborder" valign="top" width="6%">12</td>
+<td class="cellrowborder" valign="top" width="6%">14)</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="row-nocellborder" valign="top" width="6%">&nbsp;</td>
+</tr>
+<tr>
+<td class="cellrowborder" colspan="2" valign="top"><strong>zero-based indexing</strong></td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="row-nocellborder" valign="top" width="6%">&nbsp;</td>
+</tr>
+<tr>
+<td class="cellrowborder" valign="top" width="16%"><var>values</var></td>
+<td class="cellrowborder" valign="top" width="6%">=</td>
+<td class="cellrowborder" valign="top" width="6%">(1</td>
+<td class="cellrowborder" valign="top" width="6%">-2</td>
+<td class="cellrowborder" valign="top" width="6%">-4</td>
+<td class="cellrowborder" valign="top" width="6%">-1</td>
+<td class="cellrowborder" valign="top" width="6%">5</td>
+<td class="cellrowborder" valign="top" width="6%">8</td>
+<td class="cellrowborder" valign="top" width="6%">4</td>
+<td class="cellrowborder" valign="top" width="6%">2</td>
+<td class="cellrowborder" valign="top" width="6%">-3</td>
+<td class="cellrowborder" valign="top" width="6%">6</td>
+<td class="cellrowborder" valign="top" width="6%">7</td>
+<td class="cellrowborder" valign="top" width="6%">4</td>
+<td class="row-nocellborder" valign="top" width="6%">-5)</td>
+</tr>
+<tr>
+<td class="cellrowborder" valign="top" width="16%"><var>rows</var></td>
+<td class="cellrowborder" valign="top" width="6%">=</td>
+<td class="cellrowborder" valign="top" width="6%">(0</td>
+<td class="cellrowborder" valign="top" width="6%">1</td>
+<td class="cellrowborder" valign="top" width="6%">3</td>
+<td class="cellrowborder" valign="top" width="6%">0</td>
+<td class="cellrowborder" valign="top" width="6%">1</td>
+<td class="cellrowborder" valign="top" width="6%">4</td>
+<td class="cellrowborder" valign="top" width="6%">2</td>
+<td class="cellrowborder" valign="top" width="6%">3</td>
+<td class="cellrowborder" valign="top" width="6%">0</td>
+<td class="cellrowborder" valign="top" width="6%">2</td>
+<td class="cellrowborder" valign="top" width="6%">3</td>
+<td class="cellrowborder" valign="top" width="6%">2</td>
+<td class="row-nocellborder" valign="top" width="6%">4)</td>
+</tr>
+<tr>
+<td class="cellrowborder" valign="top" width="16%"><var>pointerB</var></td>
+<td class="cellrowborder" valign="top" width="6%">=</td>
+<td class="cellrowborder" valign="top" width="6%">(0</td>
+<td class="cellrowborder" valign="top" width="6%">3</td>
+<td class="cellrowborder" valign="top" width="6%">6</td>
+<td class="cellrowborder" valign="top" width="6%">8</td>
+<td class="cellrowborder" valign="top" width="6%">11)</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="row-nocellborder" valign="top" width="6%">&nbsp;</td>
+</tr>
+<tr>
+<td class="cellrowborder" valign="top" width="16%"><var>pointerE</var></td>
+<td class="cellrowborder" valign="top" width="6%">=</td>
+<td class="cellrowborder" valign="top" width="6%">(3</td>
+<td class="cellrowborder" valign="top" width="6%">6</td>
+<td class="cellrowborder" valign="top" width="6%">8</td>
+<td class="cellrowborder" valign="top" width="6%">11</td>
+<td class="cellrowborder" valign="top" width="6%">13)</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="cellrowborder" valign="top" width="6%">&nbsp;</td>
+<td class="row-nocellborder" valign="top" width="6%">&nbsp;</td>
+</tr>
+</tbody></table></div>
+<p/>
+</div></div></div></div></div>
+</div>
+</body>
+</html>

@@ -2,50 +2,28 @@ module Hamiltonian
     implicit none
     private sortHa
 contains
+
 ! ============================================================================
-! This routine constructs the Hamiltonian of a LBP-site-translation-invariant  
-! spin-(D-1)/2 chain in a particular K-sector.
-! Periodic boundary condition assumed.
+! Constructs the Hamiltonian of a translation-invariant spin chain in a 
+! K-sector. Periodic boundary condition assumed.
+! Result stored in compressed sparse column (CSC) format, lower triangular 
+! part only.
+! ----------------------------------------------------------------------------
+! User must supply H_TERM_ACTION in USER_HAMILTONIAN module to implement a
+! custom Hamiltonian.
 ! ============================================================================
 ! Arguments
 ! ----------------------------------------------------------------------------
-! HVALUE:    On output, store numeric value of nonzero matrix elements.
-!            Usually the largest array in this routine AND calling program
-! HROW:      On output, store row index of nonzero matrix elements
-! HCOLUMN:   On output, store column index of nonzero matrix elements
-! NHELE:     On output, give number of nonzero matrix elements
-! K:         On input, specify in which K-sector the Hamiltonian is to be 
-!            constructed
-! G:         On input, specify a parameter in the Hamiltonian
-!            E.g., a coupling constant.
-! ============================================================================
-! Local Variables
-! ----------------------------------------------------------------------------
-! DIS:      Number of translations needed for a given spin configuration to 
-!           become the representative of equivalent configurations
-! HROWT:    Temporary row index
-! HCOLUMNT: Temporary column index
-! NTERM:    Number of basis vectors involved after applying the Hamiltonian on
-!           a basis vector. Roughly equals the number of nonzero matrix 
-!           elements in a column. Usually of the same order as NSITE.
-! HVALUET:  Temporary matrix elements' value
-! OVERLAP:  Number of ALPHA2's that have the same representative
-! ALPHA:    Initial state
-! ALPHA2:   Output state
-! HALPHA:   Coefficient in front of output basis vector
-! ROWIND:   Row indices of all output basis vectors
-! S1, S2:   Counter variable for terms of Hamiltonian, range from 1 to NTERM
-! ============================================================================
-! Specific form of the Hamiltonian must be specified within the implementation
-! of the routine. The rule is given by
-!         H * ket(ALPHA) = Sum_s1 HVALUE(S1) ket(ALPHA2),   or
-!         H * ket(HCOLUMNT) = Sum_s1 HVALUE(S1) ket(ROWIND(S1)).
-! More detailed explanations can be found in the note 
-!         Constructing Hamiltonians in K-Space
+! HVALUE, HROW, HPNTRB, HPNTRE:
+!       (out) {values, row, pointerB, pointerE} of the Hamiltonian in CSC
+!             format. See CSC.html for more details.
+! K:    (in)  specify in which K-sector the Hamiltonian is to be 
+!       constructed
+! See CSC.html for details of sparse BLAS CSC matrix storage format
 ! ============================================================================
 subroutine constructH(Hvalue, Hrow, Hpntrb, Hpntre, k)
     use constants
-    use user_parameters, only: nbp, nsite, nterm, g
+    use user_parameters, only: ncell, nsite, nterm
     use necklaces, only: get_alpha, get_index_x, &
                          norbits, reps, period, kidx, dis2rep
     use user_hamiltonian, only: h_term_action
@@ -59,70 +37,78 @@ subroutine constructH(Hvalue, Hrow, Hpntrb, Hpntre, k)
     integer,   intent(in)  :: k
     integer,   intent(out) :: Hrow(:), Hpntrb(:), Hpntre(:)
     complex(8),intent(out) :: Hvalue(:)
-    ! ===============
-    ! LOCAL VARIABLES
-    ! ===============
+! ============================================================================
+! Local Variables
+! ----------------------------------------------------------------------------
+! ALPHA_IN:     Initial state, corresponds to a column index
+! ALPHA_OUT:    Output state, corresponds to a row index
+! S1, S2:       Counter variable for terms in Hamiltonian, range: 1 to NTERM
+! COEFFS:       Coefficients in front of output basis vector
+! ROWIND:       Row indices of output basis vectors
+! DIS:          Number of translations needed for a given spin configuration
+!               to become the representative of its equivalent class
+! OVERLAP:      Number of ALPHA_OUT's that have the same representative
+! HROWT:        Temporary row index
+! HCOLUMNT:     Temporary column index
+! HVALUET:      Temporary matrix element value
+! NHELE:        Counter of matrix elements
+! ============================================================================
     integer Hrowt, Hcolumnt, nHele
     complex(8) Hvaluet
-    complex(8),allocatable :: Halpha(:)
+    complex(8),allocatable :: coeffs(:)
     integer s1, s2, overlap
-    integer alpha(nsite), alpha2(nsite)
+    integer alpha_in(nsite), alpha_out(nsite)
     integer,allocatable :: dis(:), rowind(:)
     
     if( size(Hpntrb)/=norbits .or. size(Hpntre)/=norbits .or. size(Hvalue)/=size(Hrow) ) &
         error stop 'Error: inconsistent dimensions in HAMILTONIAN.CONSTRUCTH'
-    allocate( Halpha(nterm), dis(nterm), rowind(nterm) )
-    ! ===========================================
-    !            M A I N   L O O P
-    ! 1. Construct Hamiltonian in each k-subspace
-    ! 2. Count number of elements in each H
-    !    store in NHELE
-    ! -------------------------------------------
+    allocate( coeffs(nterm), dis(nterm), rowind(nterm) )
+    ! ==================================
+    !          M A I N   L O O P
     ! Loop over different initial states
     !     i.e. different column indices
-    ! ===========================================
+    ! ==================================
     nHele = 1
     column_loop: do Hcolumnt = 1, norbits
         Hpntrb(Hcolumnt) = nHele
-        call get_alpha(reps(Hcolumnt), alpha)
+        call get_alpha(reps(Hcolumnt), alpha_in)
         ! ====================================
         ! Loop over all terms in Hamiltonian
-        ! constructing states in H*ALPHA
+        ! constructing states in H*ALPHA_IN
         ! ------------------------------------
-        ! H * ket(ALPHA) = H * ket(HCOLUMNT)
-        !  = Sum_s1 HALPHA(S1) ket(ALPHA2)
-        !  = Sum_s1 HALPHA(S1) ket(ROWIND(S1))
+        ! H * ket(ALPHA_IN) = H * ket(HCOLUMNT)
+        !  = Sum_s1 COEFFS(s1) ket(ALPHA_OUT)
+        !  = Sum_s1 COEFFS(s1) ket(ROWIND(s1))
         ! ====================================
         do s1 = 1, nterm
-            call h_term_action(alpha, s1, alpha2, Halpha(s1))
-            rowind(s1) = kidx(get_index_x(alpha2))
-            dis(s1) = dis2rep(get_index_x(alpha2))
+            call h_term_action(alpha_in, s1, alpha_out, coeffs(s1))
+            rowind(s1) = kidx(get_index_x(alpha_out))
+            dis(s1) = dis2rep(get_index_x(alpha_out))
         enddo
-        call sortHa( rowind, dis, Halpha )
-        ! =================================
-        ! Loop over different states in H*a
+        call sortHa( rowind, dis, coeffs )
+        ! =====================================
+        ! Loop over different states in H*alpha
         !     i.e. different row indices
-        ! =================================
+        ! =====================================
         s1 = 1
         row_loop: do while( s1 <= nterm )
             Hrowt = rowind(s1)
-            ! ==========================
-            ! Count # of overlapping H*a
-            ! ==========================
+            ! =============================================
+            ! Count # of overlapping H*alpha starting at S1
+            ! =============================================
             do overlap = 1, nterm-s1
                 if( rowind(s1+overlap)/=rowind(s1) ) exit
             enddo
             !==========================================================
             ! Calculate Hvalue in upper triangle if it might be nonzero
             !==========================================================
-            ! if( mod(k, nBp/period(Hrowt))==0 ) then
-            if( mod(k, nBp/period(Hrowt))==0 .and. Hrowt >= Hcolumnt ) then
-                ! ========================
-                ! Sum over overlapping H*a
-                ! ========================
+            if( mod(k, ncell/period(Hrowt))==0 .and. Hrowt >= Hcolumnt ) then
+                ! ============================
+                ! Sum over overlapping H*alpha
+                ! ============================
                 Hvaluet = zero
                 do s2 = s1, s1+overlap-1
-                    Hvaluet = Hvaluet + Halpha(s2)*exp( onei*2*pi*k*dis(s2)/nBp )
+                    Hvaluet = Hvaluet + coeffs(s2)*exp( onei*2*pi*k*dis(s2)/ncell )
                 enddo
                 Hvaluet = Hvaluet * sqrt( 1.0_8*period(Hcolumnt)/period(Hrowt) )
                 ! =============================
@@ -141,20 +127,21 @@ subroutine constructH(Hvalue, Hrow, Hpntrb, Hpntre, k)
         end do row_loop
         Hpntre(Hcolumnt) = nHele
     end do column_loop
-    deallocate( Halpha, dis, rowind )
+    deallocate( coeffs, dis, rowind )
 end subroutine constructH
 
 ! ==========================================
-! Sort ROWIND/DIS/HALPHA in increasing order
+! Sort ROWIND/DIS/COEFFS in increasing order
 !     according to ROWIND
 ! ==========================================
-subroutine sortHa(rowind, dis, Halpha)
+subroutine sortHa(rowind, dis, coeffs)
     integer,   dimension(:),intent(inout) :: rowind, dis
-    complex(8),dimension(:),intent(inout) :: Halpha
+    complex(8),dimension(:),intent(inout) :: coeffs
     integer n, temp, i, j, key
     complex(8) tempHa
     n = size(rowind)
-    if( size(dis)/=n .or. size(Halpha)/=n ) error stop 'Error: inconsistent dimensions in HAMILTONIAN.SORTHA'
+    if( size(dis)/=n .or. size(coeffs)/=n ) &
+        error stop 'Error: inconsistent dimensions in HAMILTONIAN.SORTHA'
     ! =========================================
     ! Selection sort
     ! I: size of selected array after the loop
@@ -174,9 +161,9 @@ subroutine sortHa(rowind, dis, Halpha)
         dis(i) = dis(key)
         dis(key) = temp
         
-        tempHa = Halpha(i)
-        Halpha(i) = Halpha(key)
-        Halpha(key) = tempHa
+        tempHa = coeffs(i)
+        coeffs(i) = coeffs(key)
+        coeffs(key) = tempHa
     enddo
 end subroutine sortHa
 

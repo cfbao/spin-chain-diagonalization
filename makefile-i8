@@ -1,7 +1,7 @@
 # Define variables
 FC =ifort
 TAG =main.out
-MODULE :=user_parameters.o constants.o necklaces.o user_hamiltonian.o hamiltonian.o eigen.o spectrumUtility.o
+MODULE :=user_parameters.o constants.o user_cscmv.o necklaces.o user_hamiltonian.o hamiltonian.o eigen.o spectrumUtility.o
 OTHERS :=
 ARPACK :=dmout.o dvout.o ivout.o second_NONE.o zgetv0.o zmout.o znaitr.o znapps.o znaup2.o znaupd.o zneigh.o zneupd.o zngets.o zsortc.o zstatn.o zvout.o
 MAIN :=main.o

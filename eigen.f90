@@ -1,69 +1,32 @@
 module eigen
     implicit none
 contains
+
 ! ==========================================================================
-! This routine is an interface to (original) ARPACK. It computes selected 
-! eigenvalues (and corresponding eigenvectors if requested) of a complex 
-! matrix in sparse coordinate format.
+! This routine is an interface to ARPACK. It computes selected eigenvalues 
+! (and corresponding eigenvectors if requested) of a complex Hermitian 
+! matrix in compressed sparse column (CSC) format, where only the lower 
+! triangular part is stored.
 ! It is modified from the ARPACK example program ZNDRV1.F.
-! ==========================================================================
-! Routines called
-!   znaupd          ARPACK reverse communication interface routine.
-!   zneupd          ARPACK routine that returns Ritz values and (optionally)
-!                   Ritz vectors (i.e. approx. eigenvalues and eigenvectors)
-!   mkl_zcoogemv    Level 2 Sparse BLAS that computes matrix-vector product 
-!                   of a sparse general matrix in the coordinate format
-!   dlapy2          LAPACK routine to compute sqrt(x**2+y**2) carefully.
-!   dznrm2          Level 1 BLAS that computes the norm of a complex vector.
-!   zaxpy           Level 1 BLAS that computes y <- alpha*x+y.
+! --------------------------------------------------------------------------
+! User may wish to supply a custom subroutine for CSC matrix-vector 
+! multiplication if using MKL is not a viable option.
 ! ==========================================================================
 ! Arguments
 ! --------------------------------------------------------------------------
-! HVALUE        On input, store numeric value of nonzero matrix elements
-! HROW          On input, store row index of nonzero matrix elements
-! HCOLUMN       On input, store column index of nonzero matrix elements
-! N             On input, specify dimension of the matrix
-! NHELE         On input, specify number of nonzero matrix elements
-! NEV           On input, specify number of eigenvalues to be computed
-! NCV           On input, specify workspace size (i.e. 2nd dimension of V)
-!                   Allowed range:            NEV+2 <= NCV <= N
-!                   Recommended (in ARPACK):    NCV >= 2*NEV
-!                   Tested:                NCV >= max{ 10, 3*NEV }
-!                   Optimal size:            Problem dependant
-!                   See APARCK documentation for full details.
-! D             On output, store eigenvalues
-! V             On input, array providing workspace, dimension (N,NCV).
-!               On output, store eigenvectors in first NEV columns 
-!               if requested.
-! RVEC          On input,   .FALSE. to surpress computing eigenvectors
-!                           .TRUE.  to request computing eigenvectors
-! FILCONV       On input, specify file "pointer" to "convergence-k.txt"
-! FILRES        On input, specify file "pointer" to "residuals-k.txt"
-! --------------------------------------------------------------------------
-! Local Parameters
-! --------------------------------------------------------------------------
-! WHICH     'LM' -> want the NEV eigenvalues of largest magnitude.
-!           'SM' -> want the NEV eigenvalues of smallest magnitude.
-!           'LR' -> want the NEV eigenvalues of largest real part.
-!           'SR' -> want the NEV eigenvalues of smallest real part.
-!           'LI' -> want the NEV eigenvalues of largest imaginary part.
-!           'SI' -> want the NEV eigenvalues of smallest imaginary part.
+! HVALUE, HROW, HPNTRB, HPNTRE:
+!           (in)  {values, row, pointerB, pointerE} of the matrix in CSC format
+!                 see CSC.html for more details.
+! NEV:      (in)  number of eigenvalues to be computed
+! D:        (out) computed eigenvalues
+! V:        (out) workspace and optionally store computed eigenvectors on output
+! RVEC:     (in)  specify whether eigenvectors are to be computed
+! FILCONV:  (in)  unit specifier for log file that stores convergence info
+! FILRES:   (in)  unit specifier for log file that stores eigenvalues and 
+!                 (if RVEC = .true.) residual info
 ! ==========================================================================
-! Except from what is documented ABOVE this line, other parts of the routine 
-! should not normally be changed. 
-! If necessary, refer to full ARPACK documentation.
-! ==========================================================================
-! Local Large Arrays (ones that might concern memory use)
-! --------------------------------------------------------------------------
-! Complex(8):   AX(N)
-!               WORKD(3*N)
-!               WORKEV(3*N)
-!               RESID(N)
-! ==========================================================================
-
 subroutine eig(Hvalue,Hrow,Hpntrb,Hpntre,nev, D,V, rvec, filconv, filres)
-    use constants, only: zero, one
-    implicit none
+    use user_cscmv, only: cscmv
 !   %--------------%
 !   |  Arguments   |
 !   %--------------%
@@ -86,7 +49,6 @@ subroutine eig(Hvalue,Hrow,Hpntrb,Hpntre,nev, D,V, rvec, filconv, filres)
     logical,allocatable :: select(:)
     complex(8),allocatable,dimension(:) :: ax, workd, workev, resid, workl
     real(8),allocatable :: rwork(:), rd(:,:)
-    character :: matdescra(6) = ['H', 'L', 'N', 'F', 'N', 'N']
     
 !   %-----------------------------%
 !   | BLAS & LAPACK routines used |
@@ -171,7 +133,7 @@ subroutine eig(Hvalue,Hrow,Hpntrb,Hpntre,nev, D,V, rvec, filconv, filres)
 !       | vector, and return the matrix vector      |
 !       | product to workd(ipntr(2)).               | 
 !       %-------------------------------------------%
-        call mkl_zcscmv('N', n, n, one, matdescra, Hvalue, Hrow, Hpntrb, Hpntre, workd(ipntr(1)), zero, workd(ipntr(2)))
+        call cscmv(n, Hvalue, Hrow, Hpntrb, Hpntre, workd(ipntr(1):), workd(ipntr(2):))
     enddo
     
     if ( info < 0 ) then
@@ -234,7 +196,7 @@ subroutine eig(Hvalue,Hrow,Hpntrb,Hpntre,nev, D,V, rvec, filconv, filres)
 !       | accurate to the requested |
 !       | tolerance)                |
 !       %---------------------------%
-        call mkl_zcscmv('N', n, n, one, matdescra, Hvalue, Hrow, Hpntrb, Hpntre, v(1,j), zero, ax)
+        call cscmv(n, Hvalue, Hrow, Hpntrb, Hpntre, v(:,j), ax)
         call zaxpy (n, -d(j), v(1,j), 1, ax, 1)
         rd(j,1) = dble (d(j))
         rd(j,2) = aimag (d(j))

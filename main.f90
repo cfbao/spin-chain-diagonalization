@@ -1,123 +1,6 @@
-! ===================================================================================
-! This program finds the low energy spectrum of a LBP-site-translation-invariant 
-! spin-(D-1)/2 chain with NSITE = LBP*NBP sites. Periodic boundary condition is 
-! assumed. The crystal momentum K takes value in {0, 1, ..., NBP-1}.
-! Spectrum is assumed to be symmetric under k -> -k, hence only sectors with 
-! K = 0, 1, ..., NBP/2 are actually computed.
-! The Hamiltonian has one parameter 'G' that can be tuned at this level.
-! -----------------------------------------------------------------------------------
-! Default precision:  Double  {real(8) = 8 bytes,  complex(8) = 16 bytes}
-! ===================================================================================
-! Libraries used:
-!    ARPACK-NG: Relevant files have already been included.
-!    MKL:       Support functions (may be replaced, see Remarks 4)
-!               LAPACK
-!               BLAS Level 1, 2, 3
-!               Sparse BLAS Level 2 
-! -----------------------------------------------------------------------------------
-! Routines used:
-! -----------------------------------------------------------------------------------
-! FIND_CYCLES: Find "building blocks" of momentum basis
-! CONSTRUCTH:  Explicitly construct the Hamiltonian in each k-sector. 
-!              Accept one parameter 'G'. Store H in sparse coordinate format.
-!              Hamiltonian must be specified in this routine.
-! EIG:         Solve the eigenvalue problem for one k-sector.
-!              It is an interface to ARPACK-NG.
-! DSECND:      MKL support function to get CPU time.
-! ===================================================================================
-! Input parameters
-! -----------------------------------------------------------------------------------
-! LBP:    Length of each translation invariant block
-! NBP:    Number of translation invariant block.
-! NSITE:  = LBP*NBP. Total number of sites of the system.
-! D:      Dimension of local Hilbert space
-! NTERM:  Number of basis vectors involved after applying the Hamiltonian on a basis 
-!         vector. Roughly equals the number of nonzero matrix elements in a column.
-!         usually of the same order as LBP*NBP
-! G:      A parameter in the Hamiltonian
-! NEV:    Number of eigenvalue (and eigenvectors) requested in each k-sector
-! NCV:    Size of workspace array. Determine the size of EIGENVECTOR.
-!         Allowed range:           NEV+2 <= NCV <= dim of matrix (NCONFIG, see below)
-!         Recommended (in ARPACK): NCV >= 2*NEV
-!         Tested:                  NCV >= max{ 20, 3*NEV }
-!         See APARCK routines for full details.
-! MEMMAX: Memory available on computer in unit of GB
-! ===================================================================================
-! Constant parameters (better left unchanged)
-! -----------------------------------------------------------------------------------
-! VALUE_VECTOR:   Set to .FALSE., suppress computation of eigenvectors.
-!                 Current implementation does not support exporting eigenvectors.
-! ===================================================================================
-! Main variables
-! -----------------------------------------------------------------------------------
-! I,K:          Counters and occational usage
-!               K reserved for crystal momentum
-! NCONFIG:      Number of spin configurations (mod translations) 
-!                     ~ 2**(2*NBP)/NBP
-! EIGENVALUE:   Temporarily store eigenvalues computed in each k-sector.
-! SPECTRUMRAW:  Store low energy spectrum as they're computed, minimum processing
-! SPECTRUMALL:  Store the whole low energy spectrum in ascending order (GS first)
-! SPECTRUMK:    Store the whole low energy spectrum in each k sector in ascending 
-!               order (GS first)
-! GS:           Ground state energy.
-! NCONFIG_EST:  Estimated value of NCONFIG
-! MEM:          Estimated memory usage in unit of GB
-! FILSPEC       "Pointer" to spectrum.txt
-! FILCONVK      "Pointer" to convergence-K.txt
-! FILRESIK      "Pointer" to residuals-K.txt
-! FILERR:       "Pointer" to error file(s)
-! FILTIME:      "Pointer" to timer file
-! -----------------------------------------------------------------------------------
-! Large arrays (ones that may concern memory usage)
-! -----------------------------------------------------------------------------------
-! Arrays of size of NCONFIG (in module necklaces):
-!    CONFIG:       store all (indices of) configurations mod translations 
-!                  (i.e. a representative of each config.)
-!    PERIOD:       Store the period of each spin configurations
-!                  E.g. under 1-site translation,
-!                  000000 has period 1, 001001 has period 3, 010000 has period 6
-! Arrays of size of NHELE ~ NCONFIG*NTERM/2:
-!    HVALUE:       Value of nonzero matrix elements
-!                  (Usually the largest array in the entire program)
-!    HROW:         Row index of nonzero matrix elements
-!    HPNTRB:       Pointers to column beginnings
-!    HPNTRE:       Pointers to column ends
-! Arrays of size of NCONGIF*NCV:
-!    EIGENVECTOR:  Workspace for solving eigenvalue problem.
-!                  If requested, store eigenvectors on return.
-!                  (Could be the largest array if NEV and NCV are large)
-! ===================================================================================
-! CAUTIONS and Remarks:
-! -----------------------------------------------------------------------------------
-! 1. The only integers with explicit INTEGER(8) data type are the indices of spin 
-!    configurations in position basis (e.g. CONFIG(*)).
-!    Related subroutines/functions (GET_ALPHA, GET_INDEX_X, GET_REP) must also use 
-!    the correct data type.
-! 2. HAMILTONIAN.F90 must be modified to implement a different Hamiltonian. 
-!    Simplified instructions can be found in the documentation of HAMILTONIAN.F90.
-!    Explanations of the technical details and mathematical background can be found 
-!    in the note "Constructing Hamiltonian in k-Space".
-! 3. Relative residuals as written in residuals-k.txt should be ignored unless
-!    eigenvectors are computed.
-! 4. This program can be modified to run with standalone LAPACK and BLAS without MKL,
-!    as long as sparse matrix routines and timing function DSECND are replaced.
-!    LAPACK 3.0 or before has its own DSECND; Fortran Intrinsic has CPU_TIME(SEC).
-! 5. As system size gets larger, array sizee may exceed 2^31-1, and ILP64 interface
-!    layer must be used (default INTERGER is 8-byte). Use makefile-i8 in that case.
-! ===================================================================================
-! Original program written in August 2012 at 
-!                   Kavli Institute for Theoretical Physics.
-! Generalized and documented in June 2014 at 
-!                   Perimeter Institute for Theoretical Physics.
-! F90 part modified to be Fortran 2008 standard conforming in September 2015 at
-!                   Perimeter Institute for Theoretical Physics.
-! F90 part modified to utilize more modern Fortran features in May 2016 at
-!                   Perimeter Institute for Theoretical Physics.
-! Chenfeng Bao
-! ===================================================================================
 
 program main
-    use user_parameters, only: nbp, lbp, nsite, d, nterm, nev, ncv, g, memmax
+    use user_parameters, only: ncell, lcell, nsite, d, nterm, nev, ncv, g, memmax
     use constants, only: tabchar
     use necklaces, only: find_orbits, count_necklaces, norbits
     use Hamiltonian, only: constructH
@@ -128,7 +11,7 @@ program main
     ! Constant parameters
     ! ===================
     real(8),parameter :: degtol = 1.0D-6
-    logical,parameter :: value_vector = .false.
+    logical,parameter :: value_vector = .false.     ! don't calculate eigenvectors
     
     ! ===============
     ! Timer variables
@@ -157,12 +40,12 @@ program main
     ! Pre-run checking: estimate array size & RAM usage
     ! If estimation exceeds capability, exit program.
     ! =================================================
-    norbits = count_necklaces(nbp, d**lbp)
-    nelem = nint(norbits*(nterm+1)/2.0_8)           ! number of matrix elements for a Hermitian Hamiltonian
-    mem = 16.0_8 * (nelem + norbits*ncv + ncv) &    ! COMPLEX: Hvalue, eigenvector, eigenvalue
-        + 8.0_8 * nev * (nbp + nbp/2+1 + nbp+1) &   ! REAL: spectrumAll, spectrumRaw, spectrumK
-        + storage_size(i)/8.0_8 * &                 ! INTEGER:
-         (nelem + 4*norbits + 2*d**nsite)           !   Hrow, Hpntrb, Hpntre, 4 arrays in module NECKLACES
+    norbits = count_necklaces(ncell, d**lcell)
+    nelem = nint(norbits*(nterm+1)/2.0_8)               ! number of matrix elements for a Hermitian Hamiltonian
+    mem = 16.0_8 * (nelem + norbits*ncv + ncv) &        ! COMPLEX: Hvalue, eigenvector, eigenvalue
+        + 8.0_8 * nev * (ncell + ncell/2+1 + ncell+1) & ! REAL: spectrumAll, spectrumRaw, spectrumK
+        + storage_size(i)/8.0_8 * &                     ! INTEGER:
+         (nelem + 4*norbits + 2*d**nsite)               !   Hrow, Hpntrb, Hpntre, 4 arrays in module NECKLACES
     if( mem > memmax ) then
         open( newunit = filerr, file='not_enough_RAM.txt',action='write')
         write(filerr, '(A,1pG10.3,A)') 'Estimated memory usage :', mem,    ' Bytes'
@@ -200,13 +83,12 @@ program main
     open( newunit=filresiK, file='residuals-K.txt',   action='write')
     write(filspec, '(A)', advance='no') 'g = '
     write(filspec, *) g
-    write(filspec, '("nbp =   ",I0)') nbp
+    write(filspec, '("ncell =   ",I0)') ncell
     write(filspec, '("nsite = ",I0)') nsite
     write(filspec, '(A)')
-    
     allocate( Hvalue(nelem), Hrow(nelem), Hpntrb(norbits), Hpntre(norbits) )
-    allocate( spectrumRaw(nev, 0:nbp/2) )
-    main_loop: do k = 0, nBp/2
+    allocate( spectrumRaw(nev, 0:ncell/2) )
+    main_loop: do k = 0, ncell/2
         ! =====================
         ! Construct Hamiltonian
         ! =====================
@@ -257,11 +139,11 @@ program main
     ! Export spectrum
     ! ================
     start(4) = perf_clock()
-    call sort_eigval(spectrumRaw, nbp, spectrumK, spectrumAll)
+    call sort_eigval(spectrumRaw, ncell, spectrumK, spectrumAll)
     gs = minval(spectrumAll)
     
-    call write_eigval_k(spectrumK, filspec, nbp, -gs)
-    call write_eigval_k(spectrumK, filspec, nbp, 0.0_8)
+    call write_eigval_k(spectrumK, filspec, ncell, -gs)
+    call write_eigval_k(spectrumK, filspec, ncell, 0.0_8)
     do i = 1, size(spectrumAll)
         write(filspec, '(1pG17.10)') spectrumAll(i)
     enddo
@@ -286,6 +168,7 @@ program main
 contains
 
 function perf_clock()
+    ! timing function, a wrapper of system_clock
     integer(8) cnt, cnt_rate
     real(8) perf_clock
     intrinsic system_clock
