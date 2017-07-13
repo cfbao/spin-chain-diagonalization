@@ -138,7 +138,7 @@ program main
     ! 4: Time outputting spectrum
     ! 5: Total time
     ! ===============
-    real(8) timer(5), start(5), finish(5), dsecnd
+    real(8) timer(5), start(5), finish(5)
     
     integer i, k, nelem
     integer filspec, filconvK, filresiK, filerr, filtime
@@ -175,14 +175,14 @@ program main
     ! Timer starts
     ! ============
     timer = 0
-    start(5) = dsecnd()
+    start(5) = perf_clock()
     
     ! ===================================================
     ! initialize module necklaces
     ! ===================================================
-    start(1) = dsecnd()
-    call find_orbits(nbp, lbp, d)
-    finish(1) = dsecnd()
+    start(1) = perf_clock()
+    call find_orbits()
+    finish(1) = perf_clock()
     timer(1) = timer(1) + ( finish(1) - start(1) )
     
     ! ===================================
@@ -210,30 +210,31 @@ program main
         ! =====================
         ! Construct Hamiltonian
         ! =====================
-        start(2) = dsecnd()
+        start(2) = perf_clock()
         write(*, '(A,I0)') 'constructing Hamiltonian   k = ', k
-        finish(2) = dsecnd()
+        call constructH(Hvalue, Hrow, Hpntrb, Hpntre, k)
+        finish(2) = perf_clock()
         timer(2) = timer(2) + ( finish(2) - start(2) )
         write(*, '(1pG0.3,A)') finish(2) - start(2), ' seconds'
         
         ! ===================
         ! Solve eigen problem
         ! ===================
-        start(3) = dsecnd()
+        start(3) = perf_clock()
         write(*, '(A,I0)') 'solving eigenvalue problem k = ', k
         write(filconvK, '(A,I0)') 'k = ', k
         write(filresiK, '(A,I0)') 'k = ', k
         allocate( eigenvalue(ncv), eigenvector(norbits, ncv) )
         call eig(Hvalue, Hrow, Hpntrb, Hpntre, nev, eigenvalue, eigenvector, &
                     value_vector, filconvK, filresiK)
-        finish(3) = dsecnd()
+        finish(3) = perf_clock()
         timer(3) = timer(3) + ( finish(3) - start(3) )
         write(*, '(1pG0.3,A)') finish(3) - start(3), ' seconds'
         
         ! ===============
         ! Export spectrum
         ! ===============
-        start(4) = dsecnd()
+        start(4) = perf_clock()
         write(*, '(A,I0)') 'writing spectrum to file   k = ', k
         spectrumRaw(:, k) = eigenvalue(1:nev)
         write(filspec, '(I4)', advance='no') k
@@ -241,7 +242,7 @@ program main
             write(filspec, '(A,1pG17.10)', advance='no') tabchar, spectrumRaw(i, k)
         enddo
         write(filspec, '(A)')
-        finish(4) = dsecnd()
+        finish(4) = perf_clock()
         timer(4) = timer(4) + ( finish(4) - start(4) )
         
         deallocate( eigenvalue, eigenvector )
@@ -255,7 +256,7 @@ program main
     ! ================
     ! Export spectrum
     ! ================
-    start(4) = dsecnd()
+    start(4) = perf_clock()
     call sort_eigval(spectrumRaw, nbp, spectrumK, spectrumAll)
     gs = minval(spectrumAll)
     
@@ -265,14 +266,14 @@ program main
         write(filspec, '(1pG17.10)') spectrumAll(i)
     enddo
     close(filspec)
-    finish(4) = dsecnd()
+    finish(4) = perf_clock()
     timer(4) = timer(4) + ( finish(4) - start(4) )
     
     ! =========================
     ! Timer ends
     ! Export timing information
     ! =========================
-    finish(5) = dsecnd()
+    finish(5) = perf_clock()
     timer(5) = timer(5) + ( finish(5) - start(5) )
     open( newunit = filtime, file='timer.txt', action='write' )
     write(filtime, '(A)') 'Time used:'
@@ -282,4 +283,14 @@ program main
     write(filtime, '(A,1pG10.3,A)') 'Exporting spectrum:       ', timer(4), ' seconds'
     write(filtime, '(A,1pG10.3,A)') 'Total:                    ', timer(5), ' seconds'
     close(filtime)
+contains
+
+function perf_clock()
+    integer(8) cnt, cnt_rate
+    real(8) perf_clock
+    intrinsic system_clock
+    call system_clock(cnt, cnt_rate)
+    perf_clock = 1.0_8 * cnt / cnt_rate
+end function perf_clock
+
 end program main
