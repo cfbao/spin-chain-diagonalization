@@ -1,4 +1,21 @@
+! Copyright (C) 2012, 2014-2017 - Chenfeng Bao
+!
+! This program is free software; you can redistribute it and/or modify it 
+! under the terms of the GNU General Public License; either version 3 of 
+! the License, or (at your option) any later version.
+! You should have received a copy of the GNU General Public License 
+! along with this program; if not, see <http://www.gnu.org/licenses>.
 
+! =================================================================================
+! This program finds the low energy spectrum of a translation-invariant spin chain,
+! assuming periodic boundary condition.
+! ---------------------------------------------------------------------------------
+! Libraries used:
+!    ARPACK-NG: Relevant files already included
+!    LAPACK
+!    BLAS Level 1, 2, 3
+!    MKL Sparse BLAS Level 2 (only used in user_cscmv.f90; may be substituted)
+! =================================================================================
 program main
     use user_parameters, only: ncell, lcell, nsite, d, nterm, nev, ncv, g, memmax
     use constants, only: tabchar
