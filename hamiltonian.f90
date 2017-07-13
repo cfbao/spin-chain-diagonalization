@@ -43,10 +43,12 @@ contains
 ! More detailed explanations can be found in the note 
 !         Constructing Hamiltonians in K-Space
 ! ============================================================================
-subroutine constructH(Hvalue, Hrow, Hpntrb, Hpntre, nterm, k, g)
+subroutine constructH(Hvalue, Hrow, Hpntrb, Hpntre, k)
     use constants
-    use necklaces, only: get_alpha, get_index_x, mod1, &
-                         nbp, nsite, norbits, reps, period, kidx, dis2rep
+    use user_parameters, only: nbp, nsite, nterm, g
+    use necklaces, only: get_alpha, get_index_x, &
+                         norbits, reps, period, kidx, dis2rep
+    use user_hamiltonian, only: h_term_action
     ! =========
     ! PARAMETER
     ! =========
@@ -54,10 +56,9 @@ subroutine constructH(Hvalue, Hrow, Hpntrb, Hpntre, nterm, k, g)
     ! =========
     ! ARGUMENTS
     ! =========
-    integer,   intent(in)  :: nterm, k
+    integer,   intent(in)  :: k
     integer,   intent(out) :: Hrow(:), Hpntrb(:), Hpntre(:)
     complex(8),intent(out) :: Hvalue(:)
-    real(8),   intent(in)  :: g
     ! ===============
     ! LOCAL VARIABLES
     ! ===============
@@ -92,23 +93,12 @@ subroutine constructH(Hvalue, Hrow, Hpntrb, Hpntre, nterm, k, g)
         !  = Sum_s1 HALPHA(S1) ket(ALPHA2)
         !  = Sum_s1 HALPHA(S1) ket(ROWIND(S1))
         ! ====================================
-        Halpha = zero
         do s1 = 1, nterm
-            alpha2 = alpha
-            if( s1 <= nsite ) then
-                Halpha(s1) = -1
-                alpha2(s1) = mod( alpha2(s1)+1, 2 )
-                alpha2(mod1(s1+1,nsite)) = mod( alpha2(mod1(s1+1,nsite))+1, 2 )
-            else if( s1 == nterm ) then
-                do s2 = 1, nsite
-                    Halpha(nterm) = Halpha(nterm) + (-1)**alpha(s2)
-                enddo
-            end if
+            call h_term_action(alpha, s1, alpha2, Halpha(s1))
             rowind(s1) = kidx(get_index_x(alpha2))
             dis(s1) = dis2rep(get_index_x(alpha2))
         enddo
         call sortHa( rowind, dis, Halpha )
-        
         ! =================================
         ! Loop over different states in H*a
         !     i.e. different row indices

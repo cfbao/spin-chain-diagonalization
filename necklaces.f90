@@ -1,6 +1,7 @@
 module necklaces
+    use user_parameters, only: d, nbp, lbp, nsite
     implicit none
-    integer d, nbp, lbp, nsite, norbits
+    integer norbits
     integer, allocatable :: reps(:)         ! input index_k output index_x of rep
     integer, allocatable :: period(:)       ! input index_k output period
     integer, allocatable :: kidx(:)         ! input index_x output index_k
@@ -14,15 +15,10 @@ contains
 !   store in REPS, PERIOD, KIDX, DIS2REP
 ! This subroutine should be called only once as initialization
 ! ============================================================
-subroutine find_orbits(nbp_in, lbp_in, d_in)
-    integer,intent(in)  :: nbp_in, lbp_in, d_in
-    integer alpha(nbp_in*lbp_in)
+subroutine find_orbits()
+    integer alpha(nbp*lbp)
     integer iX, iXt, iK, i
     
-    d = d_in
-    nbp = nbp_in
-    lbp = lbp_in
-    nsite = nbp * lbp
     norbits = count_necklaces(nbp, d**lbp)
     allocate( reps(norbits), period(norbits), kidx(d**nsite), dis2rep(d**nsite) )
     kidx = 0

@@ -117,20 +117,13 @@
 ! ===================================================================================
 
 program main
+    use user_parameters, only: nbp, lbp, nsite, d, nterm, nev, ncv, g, memmax
     use constants, only: tabchar
     use necklaces, only: find_orbits, count_necklaces, norbits
     use Hamiltonian, only: constructH
     use eigen, only: eig
     use spectrumUtility, only: sort_eigval, write_eigval_k
     implicit none
-    ! ================
-    ! Input parameters
-    ! ================
-    integer,parameter :: nbp = 15, lbp = 1, nsite = lbp * nbp
-    integer,parameter :: d = 2, nterm = nsite+1
-    integer,parameter :: nev = 10, ncv = min(d**nsite, max(3*nev, 20))
-    real(8),parameter :: g = -0.0_8, memmax = 1024**3
-    
     ! ===================
     ! Constant parameters
     ! ===================
@@ -205,8 +198,10 @@ program main
     open( newunit=filspec,  file='spectrum.txt',      action='write')
     open( newunit=filconvK, file='convergence-K.txt', action='write')
     open( newunit=filresiK, file='residuals-K.txt',   action='write')
-    write(filspec, '(5A)')            'g', tabchar, 'nbp', tabchar, 'nsite'
-    write(filspec, '(F7.4,A,I0,A,I0)') g,  tabchar,  nbp,  tabchar,  nsite
+    write(filspec, '(A)', advance='no') 'g = '
+    write(filspec, *) g
+    write(filspec, '("nbp =   ",I0)') nbp
+    write(filspec, '("nsite = ",I0)') nsite
     write(filspec, '(A)')
     
     allocate( Hvalue(nelem), Hrow(nelem), Hpntrb(norbits), Hpntre(norbits) )
@@ -217,7 +212,6 @@ program main
         ! =====================
         start(2) = dsecnd()
         write(*, '(A,I0)') 'constructing Hamiltonian   k = ', k
-        call constructH(Hvalue, Hrow, Hpntrb, Hpntre, nterm, k, g)
         finish(2) = dsecnd()
         timer(2) = timer(2) + ( finish(2) - start(2) )
         write(*, '(1pG0.3,A)') finish(2) - start(2), ' seconds'

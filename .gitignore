@@ -1,1 +1,16 @@
+# Slurm script
 *.sbatch
+
+# fort_depend.py generated dependency file
+makefile.dep
+
+# compiled obj, mod files
+obj/
+mod/
+*.o
+*.mod
+*__genmod*
+
+# executables
+*.out
+*.exe
